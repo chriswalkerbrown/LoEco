@@ -80,3 +80,4 @@ time,device_id,f_cnt,BatV,Bat_status,Ext_sensor,Hum_SHT,TempC_DS,TempC_SHT,Exti_
 2026-01-05 15:00:00+00:00,blackbulbmodel1,4699.0,3.016,3.0,Temperature Sensor,96.5,-0.5,-0.45,,False,
 2026-01-05 15:30:00+00:00,blackbulbmodel1,,3.016,3.0,Temperature Sensor,96.3,-1.0,-0.7450000000000001,,False,
 2026-01-05 16:00:00+00:00,blackbulbmodel1,4702.0,3.017,3.0,Temperature Sensor,96.1,-1.5,-1.04,,False,
+2026-01-05 16:30:00+00:00,blackbulbmodel1,4704.0,3.016,3.0,Temperature Sensor,97.5,-0.81,-0.88,,False,
