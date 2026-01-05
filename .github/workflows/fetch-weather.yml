@@ -27,7 +27,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install requests pandas matplotlib
+          pip install requests pandas matplotlib plotly
       
       - name: Run data fetch script
         env:
