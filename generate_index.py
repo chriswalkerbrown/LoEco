@@ -1,5 +1,5 @@
 # ============================================================================
-# generate_index.py — GitHub Pages–friendly static index + per-device pages
+# generate_index.py — Combined dashboard + CSV index + per-device pages
 # ============================================================================
 
 import os
@@ -24,12 +24,6 @@ def file_size_kb(path):
     return f"{os.path.getsize(path) / 1024:.1f} KB"
 
 def csv_preview(path):
-    """
-    Returns:
-      last_timestamp (str or '—')
-      record_count (int)
-      set of device_ids
-    """
     record_count = 0
     last_ts = None
     devices = set()
@@ -51,15 +45,11 @@ def csv_preview(path):
 if not os.path.isdir(DATA_DIR):
     raise FileNotFoundError("data directory does not exist")
 
-csv_files = [
-    f for f in os.listdir(DATA_DIR)
-    if f.endswith(".csv")
-]
+csv_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]
 
 if not csv_files:
     raise RuntimeError("No CSV files found in data directory")
 
-# Sort: latest.csv first, then weekly descending
 def sort_key(name):
     if name == "latest.csv":
         return (0, 0)
@@ -89,7 +79,7 @@ for filename in csv_files:
         device_to_files[d].append(filename)
 
 # ----------------------------------------------------------------------------
-# HTML templates
+# HTML templates (dark theme)
 # ----------------------------------------------------------------------------
 
 def html_header(title):
@@ -102,14 +92,36 @@ def html_header(title):
 <style>
 body {{
     font-family: system-ui, sans-serif;
-    max-width: 960px;
+    max-width: 1000px;
     margin: 40px auto;
-    background: #f5f5f5;
+    background: #111;
+    color: #eee;
 }}
 .container {{
-    background: white;
+    background: #1a1a1a;
     padding: 30px;
     border-radius: 8px;
+    border: 1px solid #333;
+}}
+h1, h2 {{
+    color: #66ccff;
+}}
+a {{
+    color: #66aaff;
+    text-decoration: none;
+}}
+.card {{
+    background: #222;
+    padding: 20px;
+    margin-bottom: 25px;
+    border-radius: 8px;
+    border: 1px solid #333;
+}}
+img {{
+    max-width: 100%;
+    border-radius: 6px;
+    border: 1px solid #333;
+    margin-bottom: 20px;
 }}
 table {{
     width: 100%;
@@ -117,11 +129,10 @@ table {{
 }}
 th, td {{
     padding: 10px;
-    border-bottom: 1px solid #ddd;
-    text-align: left;
+    border-bottom: 1px solid #333;
 }}
 th {{
-    background: #f0f0f0;
+    background: #222;
 }}
 .badge {{
     background: #28a745;
@@ -132,13 +143,9 @@ th {{
 }}
 .footer {{
     margin-top: 30px;
-    color: #777;
+    color: #aaa;
     font-size: 14px;
     text-align: center;
-}}
-a {{
-    color: #0366d6;
-    text-decoration: none;
 }}
 </style>
 </head>
@@ -157,11 +164,10 @@ Generated {utc_now_str()}
 """
 
 # ----------------------------------------------------------------------------
-# Generate index.html
+# Generate index.html (dashboard + CSV table)
 # ----------------------------------------------------------------------------
 
 rows = []
-
 for fname in csv_files:
     meta = file_meta[fname]
     badge = '<span class="badge">LATEST</span>' if fname == "latest.csv" else ""
@@ -177,13 +183,26 @@ for fname in csv_files:
 
 index_html = (
     html_header("LoRaWAN Weather Station Data") +
-    "<h1>LoRaWAN Weather Station Data</h1>"
-    "<p>Weekly CSV exports from TTN sensors</p>"
+    "<h1>LoRaWAN Weather Station Dashboard</h1>"
+
+    # Dashboard section
+    "<div class='card'>"
+    "<h2>Latest Plots</h2>"
+    "<p>Automatically updated every 30 minutes.</p>"
+    "<img src='data/plot_temp_humidity.png' alt='Temperature and Humidity'>"
+    "<img src='data/plot_battery.png' alt='Battery Voltage'>"
+    "<img src='data/plot_dewpoint.png' alt='Dew Point'>"
+    "</div>"
+
+    # CSV table
+    "<div class='card'>"
+    "<h2>Data Files</h2>"
     "<table>"
     "<tr><th>File</th><th>Last timestamp</th><th>Records</th><th>Size</th><th></th></tr>"
     + "".join(rows) +
     "</table>"
     "<p><a href='devices/index.html'>Browse per-device downloads</a></p>"
+    "</div>"
     + html_footer()
 )
 
@@ -229,9 +248,7 @@ for device, files in sorted(device_to_files.items()):
         f.write(page)
     os.replace(path + ".tmp", path)
 
-    device_links.append(
-        f"<li><a href='{device}.html'>{device_safe}</a></li>"
-    )
+    device_links.append(f"<li><a href='{device}.html'>{device_safe}</a></li>")
 
 # ----------------------------------------------------------------------------
 # Generate devices/index.html
