@@ -34,6 +34,11 @@ jobs:
           TTN_TOKEN: ${{ secrets.TTN_TOKEN }}
         run: |
           python fetch_data.py
+          
+      - name: Generate plot image
+        run: |
+          python generate_plot.py
+
       
       - name: Update index.html with file list
         run: |
