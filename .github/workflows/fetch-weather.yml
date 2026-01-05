@@ -1,0 +1,53 @@
+name: Fetch Weather Data
+
+on:
+  schedule:
+    # Run every 30minutes at 00:00 UTC (weekly)
+    - cron: '0,30 * * * *'
+
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  fetch-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install requests pandas
+      
+      - name: Run data fetch script
+        env:
+          TTN_TOKEN: ${{ secrets.TTN_TOKEN }}
+        run: |
+          python fetch_data.py
+      
+      - name: Update index.html with file list
+        run: |
+          python generate_index.py
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add data/
+          git add index.html
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update weather data $(date +'%Y-%m-%d')"
+          git push
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          publish_branch: gh-pages
