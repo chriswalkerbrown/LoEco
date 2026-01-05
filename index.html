@@ -7,14 +7,36 @@
 <style>
 body {
     font-family: system-ui, sans-serif;
-    max-width: 960px;
+    max-width: 1000px;
     margin: 40px auto;
-    background: #f5f5f5;
+    background: #111;
+    color: #eee;
 }
 .container {
-    background: white;
+    background: #1a1a1a;
     padding: 30px;
     border-radius: 8px;
+    border: 1px solid #333;
+}
+h1, h2 {
+    color: #66ccff;
+}
+a {
+    color: #66aaff;
+    text-decoration: none;
+}
+.card {
+    background: #222;
+    padding: 20px;
+    margin-bottom: 25px;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+img {
+    max-width: 100%;
+    border-radius: 6px;
+    border: 1px solid #333;
+    margin-bottom: 20px;
 }
 table {
     width: 100%;
@@ -22,11 +44,10 @@ table {
 }
 th, td {
     padding: 10px;
-    border-bottom: 1px solid #ddd;
-    text-align: left;
+    border-bottom: 1px solid #333;
 }
 th {
-    background: #f0f0f0;
+    background: #222;
 }
 .badge {
     background: #28a745;
@@ -37,37 +58,33 @@ th {
 }
 .footer {
     margin-top: 30px;
-    color: #777;
+    color: #aaa;
     font-size: 14px;
     text-align: center;
-}
-a {
-    color: #0366d6;
-    text-decoration: none;
 }
 </style>
 </head>
 <body>
 <div class="container">
-<h1>LoRaWAN Weather Station Data</h1><p>Weekly CSV exports from TTN sensors</p><table><tr><th>File</th><th>Last timestamp</th><th>Records</th><th>Size</th><th></th></tr>
+<h1>LoRaWAN Weather Station Dashboard</h1><div class='card'><h2>Latest Plots</h2><p>Automatically updated every 30 minutes.</p><img src='data/plot_temp_humidity.png' alt='Temperature and Humidity'><img src='data/plot_battery.png' alt='Battery Voltage'><img src='data/plot_dewpoint.png' alt='Dew Point'></div><div class='card'><h2>Data Files</h2><table><tr><th>File</th><th>Last timestamp</th><th>Records</th><th>Size</th><th></th></tr>
 <tr>
 <td>latest.csv <span class="badge">LATEST</span></td>
 <td>2026-01-05 01:30:00+00:00</td>
-<td>221</td>
-<td>22.5 KB</td>
+<td>222</td>
+<td>22.6 KB</td>
 <td><a href="data/latest.csv" download>Download</a></td>
 </tr>
 
 <tr>
 <td>weather_data_2026_W02.csv </td>
 <td>2026-01-05 01:30:00+00:00</td>
-<td>221</td>
-<td>22.5 KB</td>
+<td>222</td>
+<td>22.6 KB</td>
 <td><a href="data/weather_data_2026_W02.csv" download>Download</a></td>
 </tr>
-</table><p><a href='devices/index.html'>Browse per-device downloads</a></p>
+</table><p><a href='devices/index.html'>Browse per-device downloads</a></p></div>
 <div class="footer">
-Generated 2026-01-05 13:57 UTC
+Generated 2026-01-05 14:25 UTC
 </div>
 </div>
 </body>
