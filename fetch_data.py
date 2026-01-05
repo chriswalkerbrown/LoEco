@@ -199,3 +199,14 @@ df_final.to_csv(latest_path, index=True)
 
 print(f"Saved weekly file: {weekly_path}")
 print(f"Saved latest file: {latest_path}")
+# ----------------------------------------------------------------------------
+# Save per-device CSVs
+# ----------------------------------------------------------------------------
+
+devices = {dev: df for dev, df in df_final.groupby("device_id")}
+
+for dev, df_dev in devices.items():
+    safe_name = dev.replace(" ", "_")
+    device_path = os.path.join(DATA_DIR, f"{safe_name}.csv")
+    df_dev.to_csv(device_path, index=True)
+    print(f"Saved per-device file: {device_path}")

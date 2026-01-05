@@ -62,29 +62,51 @@ th {
     font-size: 14px;
     text-align: center;
 }
+select {
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    padding: 5px 8px;
+    border-radius: 4px;
+}
 </style>
+<script>
+function goToDevice(url) {
+    if (url) {
+        window.location.href = url;
+    }
+}
+</script>
 </head>
 <body>
 <div class="container">
-<h1>Device: raingaugetest1</h1><table><tr><th>File</th><th>Last timestamp</th><th>Records</th><th>Size</th><th></th></tr>
+<h1>Device: raingaugetest1</h1><div class='card'><h2>Interactive Plots</h2><iframe src="../data/raingaugetest1_temp_humidity.html" width="100%" height="400"></iframe><iframe src="../data/raingaugetest1_battery.html" width="100%" height="300"></iframe><iframe src="../data/raingaugetest1_dewpoint.html" width="100%" height="300"></iframe></div><div class='card'><h2>Static Plots (PNG)</h2><img src="../data/raingaugetest1_temp_humidity.png" alt="Temperature and Humidity"><img src="../data/raingaugetest1_battery.png" alt="Battery Voltage"><img src="../data/raingaugetest1_dewpoint.png" alt="Dew Point"></div><div class='card'><h2>Data Files for this Device</h2><table><tr><th>File</th><th>Last timestamp</th><th>Records</th><th>Size</th><th></th></tr>
 <tr>
 <td>latest.csv</td>
 <td>2026-01-05 01:30:00+00:00</td>
-<td>222</td>
-<td>22.6 KB</td>
+<td>224</td>
+<td>22.8 KB</td>
 <td><a href="../data/latest.csv" download>Download</a></td>
+</tr>
+
+<tr>
+<td>raingaugetest1.csv</td>
+<td>2026-01-05 01:30:00+00:00</td>
+<td>97</td>
+<td>9.8 KB</td>
+<td><a href="../data/raingaugetest1.csv" download>Download</a></td>
 </tr>
 
 <tr>
 <td>weather_data_2026_W02.csv</td>
 <td>2026-01-05 01:30:00+00:00</td>
-<td>222</td>
-<td>22.6 KB</td>
+<td>224</td>
+<td>22.8 KB</td>
 <td><a href="../data/weather_data_2026_W02.csv" download>Download</a></td>
 </tr>
-</table><p><a href='../index.html'>← Back to overview</a></p>
+</table><p><a href='../index.html'>← Back to overview</a></p></div>
 <div class="footer">
-Generated 2026-01-05 14:40 UTC
+Generated 2026-01-05 15:17 UTC
 </div>
 </div>
 </body>

@@ -1,5 +1,5 @@
 # ============================================================================
-# generate_index.py — Combined dashboard + CSV index + per-device pages
+# generate_index.py — Dashboard + CSV index + per-device pages + device selector
 # ============================================================================
 
 import os
@@ -37,6 +37,9 @@ def csv_preview(path):
                 devices.add(row["device_id"])
 
     return last_ts or "—", record_count, devices
+
+def safe_device_name(device_id):
+    return device_id.replace(" ", "_")
 
 # ----------------------------------------------------------------------------
 # Discover CSV files
@@ -147,7 +150,21 @@ th {{
     font-size: 14px;
     text-align: center;
 }}
+select {{
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    padding: 5px 8px;
+    border-radius: 4px;
+}}
 </style>
+<script>
+function goToDevice(url) {{
+    if (url) {{
+        window.location.href = url;
+    }}
+}}
+</script>
 </head>
 <body>
 <div class="container">
@@ -164,7 +181,7 @@ Generated {utc_now_str()}
 """
 
 # ----------------------------------------------------------------------------
-# Generate index.html (dashboard + CSV table)
+# Generate index.html (dashboard + CSV table + device selector)
 # ----------------------------------------------------------------------------
 
 rows = []
@@ -181,13 +198,34 @@ for fname in csv_files:
 </tr>
 """)
 
+# Device selector options
+device_options = ["<option value=''>Select a device…</option>"]
+for device in sorted(device_to_files.keys()):
+    safe = safe_device_name(device)
+    device_options.append(
+        f"<option value='devices/{safe}.html'>{html.escape(device)}</option>"
+    )
+device_select_html = (
+    "<select onchange=\"goToDevice(this.value)\">"
+    + "".join(device_options) +
+    "</select>"
+)
+
 index_html = (
     html_header("LoRaWAN Weather Station Data") +
     "<h1>LoRaWAN Weather Station Dashboard</h1>"
 
-    # Dashboard section
+    # Device selector UI
     "<div class='card'>"
-    "<h2>Latest Plots</h2>"
+    "<h2>Devices</h2>"
+    "<p>Select a device to view its data and plots:</p>"
+    f"{device_select_html}"
+    "<p><a href='devices/index.html'>Or browse all devices</a></p>"
+    "</div>"
+
+    # Global dashboard plots
+    "<div class='card'>"
+    "<h2>Latest Global Plots</h2>"
     "<p>Automatically updated every 30 minutes.</p>"
     "<img src='data/plot_temp_humidity.png' alt='Temperature and Humidity'>"
     "<img src='data/plot_battery.png' alt='Battery Voltage'>"
@@ -211,13 +249,14 @@ with open("index.html.tmp", "w", encoding="utf-8") as f:
 os.replace("index.html.tmp", "index.html")
 
 # ----------------------------------------------------------------------------
-# Generate per-device pages
+# Generate per-device pages (with interactive + static plots)
 # ----------------------------------------------------------------------------
 
 device_links = []
 
 for device, files in sorted(device_to_files.items()):
     device_safe = html.escape(device)
+    safe = safe_device_name(device)
     rows = []
 
     for fname in files:
@@ -235,20 +274,41 @@ for device, files in sorted(device_to_files.items()):
     page = (
         html_header(f"Device {device_safe}") +
         f"<h1>Device: {device_safe}</h1>"
+
+        # Interactive plots
+        "<div class='card'>"
+        "<h2>Interactive Plots</h2>"
+        f"<iframe src=\"../data/{safe}_temp_humidity.html\" width=\"100%\" height=\"400\"></iframe>"
+        f"<iframe src=\"../data/{safe}_battery.html\" width=\"100%\" height=\"300\"></iframe>"
+        f"<iframe src=\"../data/{safe}_dewpoint.html\" width=\"100%\" height=\"300\"></iframe>"
+        "</div>"
+
+        # Static PNG plots
+        "<div class='card'>"
+        "<h2>Static Plots (PNG)</h2>"
+        f"<img src=\"../data/{safe}_temp_humidity.png\" alt=\"Temperature and Humidity\">"
+        f"<img src=\"../data/{safe}_battery.png\" alt=\"Battery Voltage\">"
+        f"<img src=\"../data/{safe}_dewpoint.png\" alt=\"Dew Point\">"
+        "</div>"
+
+        # CSV table
+        "<div class='card'>"
+        "<h2>Data Files for this Device</h2>"
         "<table>"
         "<tr><th>File</th><th>Last timestamp</th><th>Records</th><th>Size</th><th></th></tr>"
         + "".join(rows) +
         "</table>"
         "<p><a href='../index.html'>← Back to overview</a></p>"
+        "</div>"
         + html_footer()
     )
 
-    path = os.path.join(DEVICES_DIR, f"{device}.html")
+    path = os.path.join(DEVICES_DIR, f"{safe}.html")
     with open(path + ".tmp", "w", encoding="utf-8") as f:
         f.write(page)
     os.replace(path + ".tmp", path)
 
-    device_links.append(f"<li><a href='{device}.html'>{device_safe}</a></li>")
+    device_links.append(f"<li><a href='{safe}.html'>{device_safe}</a></li>")
 
 # ----------------------------------------------------------------------------
 # Generate devices/index.html
@@ -270,3 +330,4 @@ os.replace(
 )
 
 print("Static HTML pages generated successfully.")
+
