@@ -23,6 +23,7 @@ LOOKBACK = "168h"  # last 7 days
 
 DATA_DIR = "data"
 
+
 # ----------------------------------------------------------------------------
 # Safety checks (cron-safe)
 # ----------------------------------------------------------------------------
@@ -39,7 +40,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 def sse_events(response: requests.Response) -> Iterable[str]:
     """
     Generator yielding complete SSE `data:` payloads as strings.
-    Correctly handles multi-line events.
+    Correctly handles multi-line events and direct JSON lines without 'data:' prefix.
     """
     buffer = []
 
@@ -60,8 +61,13 @@ def sse_events(response: requests.Response) -> Iterable[str]:
         if line.startswith(":"):
             continue
 
+        # If it's a data line, strip "data: " prefix
         if line.startswith("data:"):
             buffer.append(line[5:].lstrip())
+        else:
+            # Otherwise, assume it's a direct JSON line or part of a multi-line event
+            # This handles cases where the API sends JSON without "data:" prefix
+            buffer.append(line)
 
     # Flush any remaining buffer
     if buffer:
@@ -137,6 +143,7 @@ df_resampled = (
     .groupby("device_id")
     .resample("30min")
     .first()
+    .drop(columns="device_id") # Drop the redundant 'device_id' column before resetting index
     .reset_index()
     .set_index("time")
 )
