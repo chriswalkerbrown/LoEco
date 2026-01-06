@@ -12,7 +12,8 @@ TEMPLATE = "index_template.html"  # We'll embed the template below instead
 
 # ----------------------------------------------------------------------------
 
-HTML_TEMPLATE = """<PASTE THE TEMPLATE FROM ABOVE HERE>"""
+HTML_TEMPLATE =  """<html> ... </html>"""
+
 
 # ----------------------------------------------------------------------------
 
