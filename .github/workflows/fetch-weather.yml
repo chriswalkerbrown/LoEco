@@ -21,13 +21,13 @@ jobs:
           ref: main
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
       
       - name: Install dependencies
-        run: |
-          pip install requests pandas matplotlib plotly
+        run: pip install -r requirements.txt
       
       - name: Run data fetch script
         env:
