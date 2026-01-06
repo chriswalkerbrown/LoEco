@@ -155,6 +155,7 @@ def plotly_dewpoint_html(df):
 def main():
     ensure_output_dir()
     df = load_latest()
+    print("Columns in latest.parquet:", df.columns.tolist())
 
     print("Generating PNG plots...")
     plot_temp_humidity_png(df)
