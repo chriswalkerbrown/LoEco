@@ -361,9 +361,13 @@ df_resampled = (
     .groupby("device_id")
     .resample("30min")
     .first()
-    .reset_index(level="device_id")  # Keep device_id as column
-    .sort_index()
 )
+
+# Reset index fully to get both time and device_id as columns
+df_resampled = df_resampled.reset_index()
+
+# Set time as index
+df_resampled = df_resampled.set_index("time")
 
 # Remove any duplicate time indices (keep first occurrence per timestamp)
 if df_resampled.index.duplicated().any():
