@@ -110,6 +110,12 @@ def kalman_smooth_series(series: pd.Series, Q_base=0.01, R=1.0) -> pd.Series:
         Smoothed time series
     """
     x = series.copy().astype(float)
+    
+    # Handle duplicate indices by keeping first occurrence
+    if x.index.duplicated().any():
+        print(f"Warning: Duplicate indices found in {series.name}, keeping first occurrence")
+        x = x[~x.index.duplicated(keep='first')]
+    
     mask = x.notna()
     values = x[mask].values
     index = x[mask].index
@@ -153,10 +159,18 @@ def kalman_smooth_series(series: pd.Series, Q_base=0.01, R=1.0) -> pd.Series:
             print(f"Warning: Kalman filter unstable for {series.name}, using original data")
             return series
     
-    # Put filtered values back into full series
-    filtered = pd.Series(index=index, data=out)
-    x.loc[index] = filtered
-    return x
+    # Create result series matching original structure
+    result = series.copy()
+    
+    # Handle duplicate indices in original series
+    if result.index.duplicated().any():
+        result = result[~result.index.duplicated(keep='first')]
+    
+    # Put filtered values back
+    for idx, val in zip(index, out):
+        result.loc[idx] = val
+    
+    return result
 
 
 # ============================================================================
@@ -347,10 +361,14 @@ df_resampled = (
     .groupby("device_id")
     .resample("30min")
     .first()
-    .drop(columns="device_id")
-    .reset_index()
-    .set_index("time")
+    .reset_index(level="device_id")  # Keep device_id as column
+    .sort_index()
 )
+
+# Remove any duplicate time indices (keep first occurrence per timestamp)
+if df_resampled.index.duplicated().any():
+    print(f"Warning: Found {df_resampled.index.duplicated().sum()} duplicate timestamps, keeping first")
+    df_resampled = df_resampled[~df_resampled.index.duplicated(keep='first')]
 
 print(f"Resampled to {len(df_resampled)} data points")
 print("\nApplying Kalman filtering and interpolation...")
