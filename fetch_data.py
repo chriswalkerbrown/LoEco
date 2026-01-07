@@ -363,10 +363,14 @@ df_resampled = (
     .first()
 )
 
-# Reset index fully to get both time and device_id as columns
+# Drop the device_id column if it exists (it's already in the index)
+if "device_id" in df_resampled.columns:
+    df_resampled = df_resampled.drop(columns=["device_id"])
+
+# Reset the multi-index to get device_id and time as columns
 df_resampled = df_resampled.reset_index()
 
-# Set time as index
+# Set time as the index
 df_resampled = df_resampled.set_index("time")
 
 # Remove any duplicate time indices (keep first occurrence per timestamp)
