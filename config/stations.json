@@ -1,0 +1,24 @@
+{
+  "providers": [
+    {
+      "type": "ttn",
+      "name": "loeco_ttn",
+      "enabled": true,
+      "config": {
+        "token": "${TTN_TOKEN}",
+        "application_id": "test-field-lora-meteoa",
+        "lookback": "168h"
+      }
+    },
+    {
+      "type": "ecowitt",
+      "name": "ecowitt_home",
+      "enabled": true,
+      "config": {
+        "application_key": "${ECOWITT_APP_KEY}",
+        "api_key": "${ECOWITT_API_KEY}",
+        "mac": "${ECOWITT_MAC}"
+      }
+    }
+  ]
+}
