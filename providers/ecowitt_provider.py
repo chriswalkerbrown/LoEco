@@ -65,17 +65,19 @@ class EcowittProvider(BaseProvider):
         self.height_m = height_m
         self.owner = owner
 
-    def fetch(self):
-        params = {
-            "application_key": self.application_key,
-            "api_key": self.api_key,
-            "mac": self.mac,
-            "call_back": "all",
-        }
+def fetch(self):
+    params = {
+        "application_key": self.application_key,
+        "api_key": self.api_key,
+        "mac": self.mac,
+        "call_back": "all",
+    }
 
-        response = requests.get(self.API_URL, params=params)
-        response.raise_for_status()
-        return response.json()
+    response = requests.get(self.API_URL, params=params)
+    print("Ecowitt API response:", response.text)   # <-- ADD THIS
+    response.raise_for_status()
+    return response.json()
+
 
     def normalize(self, raw):
         data = raw.get("data", {})
