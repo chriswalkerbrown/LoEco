@@ -11,7 +11,6 @@ class TTNProvider(BaseProvider):
     """
 
     # Mapping TTN → LoEco schema
-    # Adjust these keys to match your actual TTN payload fields
     SCHEMA_MAP = {
         "timestamp": "timestamp",
 
@@ -28,7 +27,7 @@ class TTNProvider(BaseProvider):
         "uv_index": "uv",
         "black_bulb_temperature_c": "black_bulb_temperature",
 
-        # Extended sensors (adjust as needed)
+        # Extended sensors (adjust to your TTN payload)
         "soil_temperature_1_c": "soil_temp_1",
         "soil_moisture_1_pct": "soil_moisture_1",
         "pm2_5_ugm3": "pm25",
@@ -49,8 +48,11 @@ class TTNProvider(BaseProvider):
         longitude=None,
         sensor_type=None,
         height_m=None,
+        owner=None,
     ):
         super().__init__(name, target_file)
+
+        # TTN config
         self.token = token
         self.application_id = application_id
         self.lookback = lookback
@@ -60,6 +62,7 @@ class TTNProvider(BaseProvider):
         self.longitude = longitude
         self.sensor_type = sensor_type
         self.height_m = height_m
+        self.owner = owner
 
     def fetch(self):
         """
@@ -80,4 +83,6 @@ class TTNProvider(BaseProvider):
             longitude=self.longitude,
             sensor_type=self.sensor_type,
             height_m=self.height_m,
+            owner=self.owner,
         )
+
