@@ -15,9 +15,9 @@
       "name": "ecowitt_home",
       "enabled": true,
       "config": {
-        "application_key": "${ECOWITT_APP_KEY}",
-        "api_key": "${ECOWITT_API_KEY}",
-        "mac": "${ECOWITT_MAC}"
+        "application_key": "${WESTBROEKNO1ECOWITT_APP_KEY}",
+        "api_key": "${WESTBROEKNO1ECOWITT_API_KEY}",
+        "mac": "${WESTBROEKNO1ECOWITT_MAC}"
       }
     }
   ]
