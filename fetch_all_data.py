@@ -1,112 +1,130 @@
-#!/usr/bin/env python3
-"""
-LoEco Multi-Provider Data Fetcher
-Orchestrates data collection from multiple weather station providers
-"""
-import os
-import sys
+# fetch_all_data.py
+
 import json
-from typing import List, Dict
+from pathlib import Path
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from providers.ttn_provider import TTNProvider
 from providers.ecowitt_provider import EcowittProvider
 
 
-def load_config(config_path: str = "config/stations.json") -> Dict:
-    """Load provider configuration from JSON file"""
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(
-            f"Config file not found: {config_path}\n"
-            "Please create config/stations.json with your provider settings."
-        )
-    
-    with open(config_path, "r") as f:
-        config = json.load(f)
-    
-    # Substitute environment variables
-    config_str = json.dumps(config)
-    for key, value in os.environ.items():
-        config_str = config_str.replace(f"${{{key}}}", value)
-    
-    return json.loads(config_str)
+# ----------------------------------------------------------------------
+# Provider registry
+# ----------------------------------------------------------------------
+PROVIDER_CLASSES = {
+    "ttn": TTNProvider,
+    "ecowitt": EcowittProvider,
+}
 
 
-def create_provider(provider_config: Dict):
-    """Factory function to instantiate provider based on type"""
-    provider_type = provider_config["type"]
-    name = provider_config["name"]
-    config = provider_config["config"]
-    
-    if provider_type == "ttn":
-        return TTNProvider(
-            name=name,
-            token=config["token"],
-            application_id=config["application_id"],
-            lookback=config.get("lookback", "168h")
-        )
-    
-    elif provider_type == "ecowitt":
-        return EcowittProvider(
-            name=name,
-            application_key=config["application_key"],
-            api_key=config["api_key"],
-            mac=config["mac"]
-        )
-    
-    else:
-        raise ValueError(f"Unknown provider type: {provider_type}")
+# ----------------------------------------------------------------------
+# Load stations.json
+# ----------------------------------------------------------------------
+def load_config(path="stations.json"):
+    with open(path, "r") as f:
+        return json.load(f)
 
 
-def main():
-    """Run all enabled providers"""
-    print("=" * 70)
-    print("LoEco Multi-Provider Data Fetcher")
-    print("=" * 70)
-    
+# ----------------------------------------------------------------------
+# Build target filename for monthly parquet storage
+# ----------------------------------------------------------------------
+def build_target_file(provider_type, provider_name):
+    now = datetime.utcnow()
+    year = now.strftime("%Y")
+    month = now.strftime("%m")
+
+    folder = Path("data") / year / month
+    folder.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{provider_type}__{provider_name}.parquet"
+    return folder / filename
+
+
+# ----------------------------------------------------------------------
+# Worker function for each provider
+# ----------------------------------------------------------------------
+def run_provider(entry):
+    provider_type = entry.get("type")
+    provider_name = entry.get("name")
+    enabled = entry.get("enabled", False)
+
+    if not enabled:
+        return f"Skipped disabled provider: {provider_name}"
+
+    if provider_type not in PROVIDER_CLASSES:
+        return f"[ERROR] Unknown provider type: {provider_type}"
+
+    ProviderClass = PROVIDER_CLASSES[provider_type]
+
+    # Metadata
+    latitude = entry.get("latitude")
+    longitude = entry.get("longitude")
+    sensor_type = entry.get("sensor_type")
+    height_m = entry.get("height_m")
+    owner = entry.get("owner")
+
+    # Provider-specific config
+    cfg = entry.get("config", {})
+
+    # Output file
+    target_file = build_target_file(provider_type, provider_name)
+
+    print(f"\n=== Running provider: {provider_name} ({provider_type}) ===")
+    print(f"→ Output file: {target_file}")
+
     try:
-        config = load_config()
-    except FileNotFoundError as e:
-        print(f"ERROR: {e}")
-        sys.exit(1)
-    
+        provider = ProviderClass(
+            name=provider_name,
+            target_file=str(target_file),
+            latitude=latitude,
+            longitude=longitude,
+            sensor_type=sensor_type,
+            height_m=height_m,
+            owner=owner,
+            **cfg,
+        )
+
+        provider.run()
+        return f"✓ Completed: {provider_name}"
+
+    except Exception as e:
+        return f"[ERROR] Provider {provider_name} failed: {e}"
+
+
+# ----------------------------------------------------------------------
+# Main orchestrator (parallel execution)
+# ----------------------------------------------------------------------
+def main():
+    config = load_config()
     providers = config.get("providers", [])
-    enabled_providers = [p for p in providers if p.get("enabled", True)]
-    
-    if not enabled_providers:
-        print("No enabled providers found in config.")
-        sys.exit(0)
-    
-    print(f"\nFound {len(enabled_providers)} enabled provider(s):\n")
-    
-    success_count = 0
-    error_count = 0
-    
-    for provider_config in enabled_providers:
-        name = provider_config["name"]
-        provider_type = provider_config["type"]
-        
-        print(f"\n{'─' * 70}")
-        print(f"Provider: {name} ({provider_type})")
-        print(f"{'─' * 70}")
-        
-        try:
-            provider = create_provider(provider_config)
-            provider.run()
-            success_count += 1
-            
-        except Exception as e:
-            print(f"ERROR in {name}: {e}")
-            error_count += 1
-            import traceback
-            traceback.print_exc()
-    
-    # Summary
-    print(f"\n{'=' * 70}")
-    print(f"Summary: {success_count} successful, {error_count} failed")
-    print(f"{'=' * 70}\n")
-    
-    sys.exit(0 if error_count == 0 else 1)
+
+    print(f"Starting parallel execution for {len(providers)} providers...")
+
+    results = []
+
+    # Run providers in parallel threads
+    with ThreadPoolExecutor(max_workers=len(providers)) as executor:
+        future_to_provider = {
+            executor.submit(run_provider, entry): entry.get("name")
+            for entry in providers
+        }
+
+        for future in as_completed(future_to_provider):
+            provider_name = future_to_provider[future]
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                results.append(f"[ERROR] Unexpected failure in {provider_name}: {e}")
+
+    print("\n=== Summary ===")
+    for r in results:
+        print(r)
 
 
+# ----------------------------------------------------------------------
+# Entry point
+# ----------------------------------------------------------------------
 if __name__ == "__main__":
     main()
