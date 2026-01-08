@@ -65,30 +65,40 @@ class EcowittProvider(BaseProvider):
         self.height_m = height_m
         self.owner = owner
 
-    def fetch(self):
-        params = {
-            "application_key": self.application_key,
-            "api_key": self.api_key,
-            "mac": self.mac,
-            "call_back": "all",
-        }
+def fetch(self):
+    params = {
+        "application_key": self.application_key,
+        "api_key": self.api_key,
+        "mac": self.mac,
+        "call_back": "all",
+    }
 
-        response = requests.get(self.API_URL, params=params)
-        response.raise_for_status()
-        return response.json()
+    response = requests.get(self.API_URL, params=params)
+    print("Ecowitt API response:", response.text)   # <-- ADD THIS
+    response.raise_for_status()
+    return response.json()
 
-    def normalize(self, raw):
-        data = raw.get("data", {})
-        df = pd.json_normalize(data)
+def normalize(self, raw):
+    data = raw.get("data", {})
 
-        return self.apply_schema(
-            df=df,
-            mapping=self.SCHEMA_MAP,
-            provider="ecowitt",
-            station=self.name,
-            latitude=self.latitude,
-            longitude=self.longitude,
-            sensor_type=self.sensor_type,
-            height_m=self.height_m,
-            owner=self.owner,
-        )
+    if not data:
+        print("[ERROR] Ecowitt returned no data:", raw)
+        return pd.DataFrame()  # empty DF, but valid
+
+    df = pd.json_normalize(data)
+
+    if df.empty:
+        print("[ERROR] Ecowitt normalization produced empty DataFrame:", data)
+        return pd.DataFrame()
+
+    return self.apply_schema(
+        df=df,
+        mapping=self.SCHEMA_MAP,
+        provider="ecowitt",
+        station=self.name,
+        latitude=self.latitude,
+        longitude=self.longitude,
+        sensor_type=self.sensor_type,
+        height_m=self.height_m,
+        owner=self.owner,
+    )
