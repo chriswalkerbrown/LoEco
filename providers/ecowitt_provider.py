@@ -13,10 +13,8 @@ class EcowittProvider(BaseProvider):
 
     API_URL = "https://api.ecowitt.net/api/v3/device/real_time"
 
-    # Mapping Ecowitt → LoEco schema
     SCHEMA_MAP = {
         "timestamp": "time",
-
         "temperature_c": "temp",
         "humidity_pct": "humidity",
         "pressure_hpa": "baromrelin",
@@ -27,8 +25,6 @@ class EcowittProvider(BaseProvider):
         "rain_rate_mmhr": "rainrate",
         "solar_wm2": "solarradiation",
         "uv_index": "uv",
-
-        # Extended sensors
         "soil_temperature_1_c": "soiltemp1",
         "soil_moisture_1_pct": "soilmoisture1",
         "pm2_5_ugm3": "pm25",
@@ -53,52 +49,56 @@ class EcowittProvider(BaseProvider):
     ):
         super().__init__(name, target_file)
 
-        # Ecowitt config
         self.application_key = application_key
         self.api_key = api_key
         self.mac = mac
 
-        # Metadata
         self.latitude = latitude
         self.longitude = longitude
         self.sensor_type = sensor_type
         self.height_m = height_m
         self.owner = owner
 
-def fetch(self):
-    params = {
-        "application_key": self.application_key,
-        "api_key": self.api_key,
-        "mac": self.mac,
-        "call_back": "all",
-    }
+    # ---------------------------------------------------------
+    # REQUIRED ABSTRACT METHOD IMPLEMENTATION
+    # ---------------------------------------------------------
+    def fetch(self):
+        params = {
+            "application_key": self.application_key,
+            "api_key": self.api_key,
+            "mac": self.mac,
+            "call_back": "all",
+        }
 
-    response = requests.get(self.API_URL, params=params)
-    print("Ecowitt API response:", response.text)   # <-- ADD THIS
-    response.raise_for_status()
-    return response.json()
+        response = requests.get(self.API_URL, params=params)
+        print("Ecowitt API response:", response.text)
+        response.raise_for_status()
+        return response.json()
 
-def normalize(self, raw):
-    data = raw.get("data", {})
+    # ---------------------------------------------------------
+    # REQUIRED ABSTRACT METHOD IMPLEMENTATION
+    # ---------------------------------------------------------
+    def normalize(self, raw):
+        data = raw.get("data", {})
 
-    if not data:
-        print("[ERROR] Ecowitt returned no data:", raw)
-        return pd.DataFrame()  # empty DF, but valid
+        if not data:
+            print("[ERROR] Ecowitt returned no data:", raw)
+            return pd.DataFrame()
 
-    df = pd.json_normalize(data)
+        df = pd.json_normalize(data)
 
-    if df.empty:
-        print("[ERROR] Ecowitt normalization produced empty DataFrame:", data)
-        return pd.DataFrame()
+        if df.empty:
+            print("[ERROR] Ecowitt normalization produced empty DataFrame:", data)
+            return pd.DataFrame()
 
-    return self.apply_schema(
-        df=df,
-        mapping=self.SCHEMA_MAP,
-        provider="ecowitt",
-        station=self.name,
-        latitude=self.latitude,
-        longitude=self.longitude,
-        sensor_type=self.sensor_type,
-        height_m=self.height_m,
-        owner=self.owner,
-    )
+        return self.apply_schema(
+            df=df,
+            mapping=self.SCHEMA_MAP,
+            provider="ecowitt",
+            station=self.name,
+            latitude=self.latitude,
+            longitude=self.longitude,
+            sensor_type=self.sensor_type,
+            height_m=self.height_m,
+            owner=self.owner,
+        )
