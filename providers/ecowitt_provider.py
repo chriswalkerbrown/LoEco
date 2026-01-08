@@ -14,7 +14,6 @@ class EcowittProvider(BaseProvider):
     API_URL = "https://api.ecowitt.net/api/v3/device/real_time"
 
     # Mapping Ecowitt → LoEco schema
-    # Adjust these keys to match your actual Ecowitt device fields
     SCHEMA_MAP = {
         "timestamp": "time",
 
@@ -50,8 +49,11 @@ class EcowittProvider(BaseProvider):
         longitude=None,
         sensor_type=None,
         height_m=None,
+        owner=None,
     ):
         super().__init__(name, target_file)
+
+        # Ecowitt config
         self.application_key = application_key
         self.api_key = api_key
         self.mac = mac
@@ -61,6 +63,7 @@ class EcowittProvider(BaseProvider):
         self.longitude = longitude
         self.sensor_type = sensor_type
         self.height_m = height_m
+        self.owner = owner
 
     def fetch(self):
         params = {
@@ -87,4 +90,5 @@ class EcowittProvider(BaseProvider):
             longitude=self.longitude,
             sensor_type=self.sensor_type,
             height_m=self.height_m,
+            owner=self.owner,
         )
