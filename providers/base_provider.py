@@ -25,67 +25,76 @@ class BaseProvider(abc.ABC):
         """Convert provider-specific data into a normalized dataframe."""
         pass
 
-    def apply_schema(
-        self,
-        df: pd.DataFrame,
-        mapping: dict,
-        provider: str,
-        station: str,
-        latitude: float = None,
-        longitude: float = None,
-        sensor_type: str = None,
-        height_m: float = None,
-        schema_version: int = 1,
-    ) -> pd.DataFrame:
-        """
-        Normalize provider-specific columns into the LoEco schema.
-        """
+   def apply_schema(
+    self,
+    df: pd.DataFrame,
+    mapping: dict,
+    provider: str,
+    station: str,
+    latitude: float = None,
+    longitude: float = None,
+    sensor_type: str = None,
+    height_m: float = None,
+    owner: str = None,
+    schema_version: int = 1,
+) -> pd.DataFrame:
+    """
+    Normalize provider-specific columns into the LoEco schema.
 
-        out = {}
+    - mapping: {loeco_col: provider_col}
+    - missing fields become NA
+    - fills metadata fields automatically
+    - warns on unknown provider columns
+    """
 
-        # Fill all schema columns
-        for loeco_col in LOECO_SCHEMA:
+    out = {}
 
-            # Metadata fields handled separately
-            if loeco_col in (
-                "provider",
-                "station",
-                "latitude",
-                "longitude",
-                "sensor_type",
-                "height_m",
-                "schema_version",
-            ):
-                continue
+    # Fill all schema columns
+    for loeco_col in LOECO_SCHEMA:
 
-            provider_col = mapping.get(loeco_col)
+        # Metadata fields handled separately
+        if loeco_col in (
+            "provider",
+            "station",
+            "latitude",
+            "longitude",
+            "sensor_type",
+            "height_m",
+            "owner",
+            "schema_version",
+        ):
+            continue
 
-            if provider_col and provider_col in df.columns:
-                out[loeco_col] = df[provider_col]
-            else:
-                out[loeco_col] = pd.NA
+        provider_col = mapping.get(loeco_col)
 
-        # ------------------------------------------------------------------
-        # Fill metadata fields
-        # ------------------------------------------------------------------
-        out["provider"] = provider
-        out["station"] = station
-        out["latitude"] = latitude
-        out["longitude"] = longitude
-        out["sensor_type"] = sensor_type
-        out["height_m"] = height_m
-        out["schema_version"] = schema_version
+        if provider_col and provider_col in df.columns:
+            out[loeco_col] = df[provider_col]
+        else:
+            out[loeco_col] = pd.NA
 
-        # ------------------------------------------------------------------
-        # Warn on unknown provider columns
-        # ------------------------------------------------------------------
-        known_provider_cols = set(mapping.values())
-        unknown_cols = [c for c in df.columns if c not in known_provider_cols]
+    # ------------------------------------------------------------------
+    # Fill metadata fields
+    # ------------------------------------------------------------------
+    out["provider"] = provider
+    out["station"] = station
+    out["latitude"] = latitude
+    out["longitude"] = longitude
+    out["sensor_type"] = sensor_type
+    out["height_m"] = height_m
+    out["owner"] = owner
+    out["schema_version"] = schema_version
 
-        if unknown_cols:
-            print(f"[WARN] {provider}/{station}: Unmapped provider columns: {unknown_cols}")
+    # ------------------------------------------------------------------
+    # Warn on unknown provider columns
+    # ------------------------------------------------------------------
+    known_provider_cols = set(mapping.values())
+    unknown_cols = [c for c in df.columns if c not in known_provider_cols]
 
-        return pd.DataFrame(out)
+    if unknown_cols:
+        print(f"[WARN] {provider}/{station}: Unmapped provider columns: {unknown_cols}")
+
+    return pd.DataFrame(out)
+
 
     def save(self, df: pd.DataFrame):
         df.to_parquet(self.target_file, index=False)
