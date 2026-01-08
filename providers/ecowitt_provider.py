@@ -78,19 +78,27 @@ def fetch(self):
     response.raise_for_status()
     return response.json()
 
+def normalize(self, raw):
+    data = raw.get("data", {})
 
-    def normalize(self, raw):
-        data = raw.get("data", {})
-        df = pd.json_normalize(data)
+    if not data:
+        print("[ERROR] Ecowitt returned no data:", raw)
+        return pd.DataFrame()  # empty DF, but valid
 
-        return self.apply_schema(
-            df=df,
-            mapping=self.SCHEMA_MAP,
-            provider="ecowitt",
-            station=self.name,
-            latitude=self.latitude,
-            longitude=self.longitude,
-            sensor_type=self.sensor_type,
-            height_m=self.height_m,
-            owner=self.owner,
-        )
+    df = pd.json_normalize(data)
+
+    if df.empty:
+        print("[ERROR] Ecowitt normalization produced empty DataFrame:", data)
+        return pd.DataFrame()
+
+    return self.apply_schema(
+        df=df,
+        mapping=self.SCHEMA_MAP,
+        provider="ecowitt",
+        station=self.name,
+        latitude=self.latitude,
+        longitude=self.longitude,
+        sensor_type=self.sensor_type,
+        height_m=self.height_m,
+        owner=self.owner,
+    )
