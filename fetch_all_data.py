@@ -6,7 +6,7 @@ Orchestrates data collection from multiple weather station providers
 import os
 import sys
 import json
-from typing import List, Dict
+from typing import Dict
 
 from providers.ttn_provider import TTNProvider
 from providers.ecowitt_provider import EcowittProvider
@@ -32,17 +32,25 @@ def load_config(config_path: str = "config/stations.json") -> Dict:
 
 
 def create_provider(provider_config: Dict):
-    """Factory function to instantiate provider based on type"""
+    """
+    Factory function to instantiate provider based on type.
+    Adds a universal output filename: {type}__{name}.parquet
+    """
     provider_type = provider_config["type"]
     name = provider_config["name"]
     config = provider_config["config"]
-    
+
+    # Universal naming convention
+    output_filename = f"{provider_type}__{name}.parquet"
+    output_path = os.path.join("data", output_filename)
+
     if provider_type == "ttn":
         return TTNProvider(
             name=name,
             token=config["token"],
             application_id=config["application_id"],
-            lookback=config.get("lookback", "168h")
+            lookback=config.get("lookback", "168h"),
+            target_file=output_path
         )
     
     elif provider_type == "ecowitt":
@@ -50,7 +58,8 @@ def create_provider(provider_config: Dict):
             name=name,
             application_key=config["application_key"],
             api_key=config["api_key"],
-            mac=config["mac"]
+            mac=config["mac"],
+            target_file=output_path
         )
     
     else:
