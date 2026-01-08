@@ -1,0 +1,35 @@
+{
+  "providers": [
+    {
+      "type": "ttn",
+      "name": "loeco_ttn",
+      "enabled": true,
+      "owner": "MeteoALabs",
+      "latitude": 52.1234,
+      "longitude": 5.1234,
+      "sensor_type": "ttn-node",
+      "height_m": 2.0,
+      "config": {
+        "token": "${TTN_TOKEN}",
+        "application_id": "test-field-lora-meteoa",
+        "lookback": "168h"
+      }
+    },
+    {
+      "type": "ecowitt",
+      "name": "ecowitt_home",
+      "enabled": true,
+      "owner": "MeteoALabs",
+      "latitude": 52.1234,
+      "longitude": 5.1234,
+      "sensor_type": "ecowitt-wh65",
+      "height_m": 2.0,
+      "config": {
+        "application_key": "${WESTBROEKNO1ECOWITT_APP_KEY}",
+        "api_key": "${WESTBROEKNO1ECOWITT_API_KEY}",
+        "mac": "${WESTBROEKNO1ECOWITT_MAC}"
+      }
+    }
+  ]
+}
+
