@@ -21,8 +21,14 @@ class EcowittProvider(BaseProvider):
         "pressure_hpa": "baromrelin",
         "dew_point_c": "dewpoint",
         "feels_like_c": "feelslike",
+        "wind_speed_ms": "windspeed",
+        "wind_gust_ms": "windgust",
+        "wind_dir_deg": "winddir",
+        "rain_rate_mmhr": "rainrate",
+        "rain_daily_mm": "raindaily",
+        "solar_wm2": "solarradiation",
+        "uv_index": "uv",
         "battery_voltage_v": "battery",
-        "signal_strength_dbm": "rssi",
     }
 
     def __init__(
@@ -90,17 +96,89 @@ class EcowittProvider(BaseProvider):
             return pd.DataFrame()
 
         # Sections
+        outdoor = data.get("outdoor", {})
         indoor = data.get("indoor", {})
+        solar = data.get("solar_and_uvi", {})
+        rainfall = data.get("rainfall", {})
+        wind = data.get("wind", {})
         pressure = data.get("pressure", {})
         battery = data.get("battery", {})
 
-        # Extract values
-        temp_f = self.extract(indoor, "temperature")
-        humidity = self.extract(indoor, "humidity")
-        dew_f = self.extract(indoor, "dew_point")
-        feels_f = self.extract(indoor, "feels_like")
+        # -----------------------------
+        # Outdoor temperature & humidity
+        # -----------------------------
+        temp_f = self.extract(outdoor, "temperature")
+        humidity = self.extract(outdoor, "humidity")
+        dew_f = self.extract(outdoor, "dew_point")
+        feels_f = self.extract(outdoor, "feels_like")
 
-        # Pressure (relative)
+        # -----------------------------
+        # Solar & UV
+        # -----------------------------
+        solar_wm2 = None
+        try:
+            solar_wm2 = float(solar.get("solar", {}).get("value"))
+        except Exception:
+            pass
+
+        uv_index = None
+        try:
+            uv_index = float(solar.get("uvi", {}).get("value"))
+        except Exception:
+            pass
+
+        # -----------------------------
+        # Rainfall (convert inches → mm)
+        # -----------------------------
+        def inches_to_mm(x):
+            return x * 25.4 if x is not None else None
+
+        rain_rate_in = None
+        try:
+            rain_rate_in = float(rainfall.get("rain_rate", {}).get("value"))
+        except Exception:
+            pass
+
+        rain_daily_in = None
+        try:
+            rain_daily_in = float(rainfall.get("daily", {}).get("value"))
+        except Exception:
+            pass
+
+        rain_rate_mmhr = inches_to_mm(rain_rate_in)
+        rain_daily_mm = inches_to_mm(rain_daily_in)
+
+        # -----------------------------
+        # Wind (mph → m/s)
+        # -----------------------------
+        def mph_to_ms(x):
+            return x * 0.44704 if x is not None else None
+
+        wind_speed_mph = None
+        wind_gust_mph = None
+        wind_dir_deg = None
+
+        try:
+            wind_speed_mph = float(wind.get("wind_speed", {}).get("value"))
+        except Exception:
+            pass
+
+        try:
+            wind_gust_mph = float(wind.get("wind_gust", {}).get("value"))
+        except Exception:
+            pass
+
+        try:
+            wind_dir_deg = float(wind.get("wind_direction", {}).get("value"))
+        except Exception:
+            pass
+
+        wind_speed_ms = mph_to_ms(wind_speed_mph)
+        wind_gust_ms = mph_to_ms(wind_gust_mph)
+
+        # -----------------------------
+        # Pressure (inHg → hPa)
+        # -----------------------------
         pressure_rel = pressure.get("relative", {})
         pressure_inhg = None
         try:
@@ -108,15 +186,20 @@ class EcowittProvider(BaseProvider):
         except Exception:
             pass
 
-        # Battery (example: temperature sensor ch1)
-        battery_section = battery.get("temperature_sensor_ch1", {})
+        pressure_hpa = pressure_inhg * 33.8639 if pressure_inhg is not None else None
+
+        # -----------------------------
+        # Battery
+        # -----------------------------
         battery_v = None
         try:
-            battery_v = float(battery_section.get("value"))
+            battery_v = float(battery.get("sensor_array", {}).get("value"))
         except Exception:
             pass
 
+        # -----------------------------
         # Unit conversions
+        # -----------------------------
         def f_to_c(f):
             return (f - 32) * 5 / 9 if f is not None else None
 
@@ -124,9 +207,9 @@ class EcowittProvider(BaseProvider):
         dew_c = f_to_c(dew_f)
         feels_c = f_to_c(feels_f)
 
-        pressure_hpa = pressure_inhg * 33.8639 if pressure_inhg is not None else None
-
+        # -----------------------------
         # Build normalized row
+        # -----------------------------
         row = {
             "timestamp": datetime.utcnow().isoformat(),
             "temperature_c": temp_c,
@@ -134,8 +217,14 @@ class EcowittProvider(BaseProvider):
             "pressure_hpa": pressure_hpa,
             "dew_point_c": dew_c,
             "feels_like_c": feels_c,
+            "wind_speed_ms": wind_speed_ms,
+            "wind_gust_ms": wind_gust_ms,
+            "wind_dir_deg": wind_dir_deg,
+            "rain_rate_mmhr": rain_rate_mmhr,
+            "rain_daily_mm": rain_daily_mm,
+            "solar_wm2": solar_wm2,
+            "uv_index": uv_index,
             "battery_voltage_v": battery_v,
-            "signal_strength_dbm": None,  # Cloud API does not provide RSSI
         }
 
         df = pd.DataFrame([row])
