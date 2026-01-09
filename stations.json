@@ -3,7 +3,7 @@
     {
       "type": "ttn",
       "name": "loeco_ttn",
-      "enabled": false,
+      "enabled": true,
       "owner": "MeteoALabs",
       "latitude": 52.1234,
       "longitude": 5.1234,
