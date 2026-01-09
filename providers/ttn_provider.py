@@ -1,20 +1,23 @@
 # providers/ttn_provider.py
 
-import pandas as pd
+import json
 import requests
+import pandas as pd
 from datetime import datetime, timedelta
 from providers.base_provider import BaseProvider
 
 
 class TTNProvider(BaseProvider):
     """
-    Fetches weather data from The Things Network (TTN).
+    Fetches weather data from The Things Network (TTN) Storage Integration (SSE stream).
     Normalizes TTN payloads into the LoEco universal schema.
     """
 
-    TTN_API_URL = "https://eu1.cloud.thethings.network/api/v3/as/applications/{app_id}/devices/{device_id}/packages/storage/uplink_message"
+    TTN_URL = (
+        "https://eu1.cloud.thethings.network/api/v3/as/applications/"
+        "{app_id}/packages/storage/uplink_message"
+    )
 
-    # Mapping TTN payload fields → LoEco schema fields
     SCHEMA_MAP = {
         "timestamp": "timestamp",
         "temperature_c": "temperature_c",
@@ -59,36 +62,66 @@ class TTNProvider(BaseProvider):
         self.owner = owner
 
     # ---------------------------------------------------------
-    # Fetch TTN uplinks
+    # Fetch TTN uplinks via SSE stream
     # ---------------------------------------------------------
     def fetch(self):
-        lookback_hours = int(self.lookback.replace("h", ""))
-        start_time = datetime.utcnow() - timedelta(hours=lookback_hours)
-
-        url = self.TTN_API_URL.format(
-            app_id=self.application_id,
-            device_id=self.device_id,
-        )
+        url = self.TTN_URL.format(app_id=self.application_id)
 
         headers = {
             "Authorization": f"Bearer {self.token}",
+            "Accept": "text/event-stream",
         }
 
-        params = {
-            "after": start_time.isoformat() + "Z",
-            "limit": 1,  # only need the latest uplink
-        }
+        params = {"last": self.lookback}
 
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
+        rows = []
 
-        data = response.json()
+        with requests.get(url, headers=headers, params=params, stream=True) as r:
+            r.raise_for_status()
 
-        if not data:
-            print("[WARN] TTN returned no uplinks")
+            for line in r.iter_lines():
+                if not line:
+                    continue
+
+                decoded = line.decode("utf-8").strip()
+
+                if decoded.startswith("data: "):
+                    decoded = decoded[6:]
+
+                if not decoded.startswith("{"):
+                    continue
+
+                try:
+                    payload = json.loads(decoded)
+                    result = payload.get("result", payload)
+
+                    uplink = result.get("uplink_message", {})
+                    decoded_payload = uplink.get("decoded_payload", {})
+                    ts = result.get("received_at")
+
+                    # Parse timestamp safely
+                    ts_clean = ts.split(".")[0] + "Z" if ts else None
+                    ts_parsed = (
+                        datetime.fromisoformat(ts_clean.replace("Z", "+00:00"))
+                        if ts_clean
+                        else None
+                    )
+
+                    if ts_parsed:
+                        row = {"timestamp": ts_parsed}
+                        row.update(decoded_payload)
+                        rows.append(row)
+
+                except Exception:
+                    continue
+
+        if not rows:
+            print("[WARN] TTN returned no valid uplinks")
             return None
 
-        return data[0]  # latest uplink
+        # Return the latest uplink only
+        rows = sorted(rows, key=lambda r: r["timestamp"])
+        return rows[-1]
 
     # ---------------------------------------------------------
     # Normalize TTN uplink into LoEco schema
@@ -97,32 +130,7 @@ class TTNProvider(BaseProvider):
         if raw is None:
             return pd.DataFrame()
 
-        uplink = raw.get("uplink_message", {})
-        payload = uplink.get("decoded_payload", {})
-        rx_metadata = uplink.get("rx_metadata", [{}])[0]
-
-        # Extract timestamp
-        timestamp = uplink.get("received_at")
-
-        # Build normalized row
-        row = {
-            "timestamp": timestamp,
-            "temperature_c": payload.get("temperature"),
-            "humidity_pct": payload.get("humidity"),
-            "dewpoint_c": payload.get("dewpoint"),
-            "pressure_hpa": payload.get("pressure"),
-            "wind_speed_ms": payload.get("wind_speed"),
-            "wind_gust_ms": payload.get("wind_gust"),
-            "wind_dir_deg": payload.get("wind_direction"),
-            "rain_mm": payload.get("rain"),
-            "rain_rate_mmhr": payload.get("rain_rate"),
-            "solar_wm2": payload.get("solar"),
-            "uv_index": payload.get("uv"),
-            "battery_voltage_v": payload.get("battery_voltage"),
-            "signal_strength_dbm": rx_metadata.get("rssi"),
-        }
-
-        df = pd.DataFrame([row])
+        df = pd.DataFrame([raw])
 
         return self.apply_schema(
             df=df,
