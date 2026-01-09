@@ -29,6 +29,17 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       
+      - name: Create secrets file
+        run: |
+          echo "{" > .secrets.json
+          echo "  \"TTN_TOKEN\": \"${{ secrets.TTN_TOKEN }}\"," >> .secrets.json
+          echo "  \"WESTBROEKNO1ECOWITT_APP_KEY\": \"${{ secrets.WESTBROEKNO1ECOWITT_APP_KEY }}\"," >> .secrets.json
+          echo "  \"WESTBROEKNO1ECOWITT_API_KEY\": \"${{ secrets.WESTBROEKNO1ECOWITT_API_KEY }}\"," >> .secrets.json
+          echo "  \"WESTBROEKNO1ECOWITT_MAC\": \"${{ secrets.WESTBROEKNO1ECOWITT_MAC }}\"" >> .secrets.json
+          echo "}" >> .secrets.json
+
+        
+      
       - name: Run data fetch script
         env:
           TTN_TOKEN: ${{ secrets.TTN_TOKEN }}
@@ -59,3 +70,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./
           publish_branch: gh-pages
+
+
+
+
