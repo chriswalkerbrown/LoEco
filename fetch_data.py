@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from providers.ttn_provider import TTNProvider
 from providers.ecowitt_provider import EcowittProvider
+from utils.secrets_loader import load_secrets, inject_secrets
 
 
 # ----------------------------------------------------------------------
@@ -22,8 +23,18 @@ PROVIDER_CLASSES = {
 # Load stations.json
 # ----------------------------------------------------------------------
 def load_config(path="stations.json"):
+    # Load stations.json
     with open(path, "r") as f:
-        return json.load(f)
+        config = json.load(f)
+
+    # Load secrets from .secrets.json
+    secrets = load_secrets()
+
+    # Inject secrets into each provider config
+    for provider in config.get("providers", []):
+        provider["config"] = inject_secrets(provider.get("config", {}), secrets)
+
+    return config
 
 
 # ----------------------------------------------------------------------
