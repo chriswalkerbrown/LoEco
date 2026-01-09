@@ -2,13 +2,14 @@
 
 import pandas as pd
 import requests
+from datetime import datetime
 from providers.base_provider import BaseProvider
 
 
 class EcowittProvider(BaseProvider):
     """
-    Fetches weather data from the Ecowitt API.
-    Normalizes Ecowitt JSON into the LoEco universal schema.
+    Fetches weather data from the Ecowitt Cloud API (v3).
+    Normalizes nested Ecowitt JSON into the LoEco universal schema.
     """
 
     API_URL = "https://api.ecowitt.net/api/v3/device/real_time"
@@ -18,18 +19,8 @@ class EcowittProvider(BaseProvider):
         "temperature_c": "temp",
         "humidity_pct": "humidity",
         "pressure_hpa": "baromrelin",
-        "wind_speed_ms": "windspeed",
-        "wind_gust_ms": "windgust",
-        "wind_dir_deg": "winddir",
-        "rain_mm": "rainrate",
-        "rain_rate_mmhr": "rainrate",
-        "solar_wm2": "solarradiation",
-        "uv_index": "uv",
-        "soil_temperature_1_c": "soiltemp1",
-        "soil_moisture_1_pct": "soilmoisture1",
-        "pm2_5_ugm3": "pm25",
-        "pm10_ugm3": "pm10",
-        "co2_ppm": "co2",
+        "dew_point_c": "dewpoint",
+        "feels_like_c": "feelslike",
         "battery_voltage_v": "battery",
         "signal_strength_dbm": "rssi",
     }
@@ -60,6 +51,19 @@ class EcowittProvider(BaseProvider):
         self.owner = owner
 
     # ---------------------------------------------------------
+    # Helper: safely extract nested values
+    # ---------------------------------------------------------
+    def extract(self, section, field, default=None):
+        """
+        Extracts section[field]["value"] safely.
+        Example: extract(indoor, "temperature") → float(value)
+        """
+        try:
+            return float(section[field]["value"])
+        except Exception:
+            return default
+
+    # ---------------------------------------------------------
     # REQUIRED ABSTRACT METHOD IMPLEMENTATION
     # ---------------------------------------------------------
     def fetch(self):
@@ -85,11 +89,56 @@ class EcowittProvider(BaseProvider):
             print("[ERROR] Ecowitt returned no data:", raw)
             return pd.DataFrame()
 
-        df = pd.json_normalize(data)
+        # Sections
+        indoor = data.get("indoor", {})
+        pressure = data.get("pressure", {})
+        battery = data.get("battery", {})
 
-        if df.empty:
-            print("[ERROR] Ecowitt normalization produced empty DataFrame:", data)
-            return pd.DataFrame()
+        # Extract values
+        temp_f = self.extract(indoor, "temperature")
+        humidity = self.extract(indoor, "humidity")
+        dew_f = self.extract(indoor, "dew_point")
+        feels_f = self.extract(indoor, "feels_like")
+
+        # Pressure (relative)
+        pressure_rel = pressure.get("relative", {})
+        pressure_inhg = None
+        try:
+            pressure_inhg = float(pressure_rel.get("value"))
+        except Exception:
+            pass
+
+        # Battery (example: temperature sensor ch1)
+        battery_section = battery.get("temperature_sensor_ch1", {})
+        battery_v = None
+        try:
+            battery_v = float(battery_section.get("value"))
+        except Exception:
+            pass
+
+        # Unit conversions
+        def f_to_c(f):
+            return (f - 32) * 5 / 9 if f is not None else None
+
+        temp_c = f_to_c(temp_f)
+        dew_c = f_to_c(dew_f)
+        feels_c = f_to_c(feels_f)
+
+        pressure_hpa = pressure_inhg * 33.8639 if pressure_inhg is not None else None
+
+        # Build normalized row
+        row = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "temperature_c": temp_c,
+            "humidity_pct": humidity,
+            "pressure_hpa": pressure_hpa,
+            "dew_point_c": dew_c,
+            "feels_like_c": feels_c,
+            "battery_voltage_v": battery_v,
+            "signal_strength_dbm": None,  # Cloud API does not provide RSSI
+        }
+
+        df = pd.DataFrame([row])
 
         return self.apply_schema(
             df=df,
